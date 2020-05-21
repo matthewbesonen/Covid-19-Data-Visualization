@@ -1,0 +1,166 @@
+---
+title: "covid"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Visualize the spread of the virus by creating
+a heatmap of the density of confirmed cases.
+
+We need to install Packages:
+
+Getting Data ready:
+
+```{r}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(mapdata)
+library(usmap)
+library(ggplot2)
+library(gganimate)
+
+Data_1 = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+
+Global_Confirm <- read_csv(url(Data_1))
+#view(Global_Confirm)
+
+Data_2 = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+
+Global_Death <- read_csv(url(Data_2))
+#view(Global_Death)
+
+Data_3 = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+Global_Recovered <- read_csv(url(Data_3))
+#view(Global_Recovered)
+
+Data_4 = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+
+US_Confirm <- read_csv(url(Data_4))
+#view(US_Confirm)
+
+Data_5 = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"
+
+US_Death <- read_csv(url(Data_5))
+#view(US_Death)
+```
+
+We use the readr package to read the csv file each time it gets updated.
+This should give us the most up to date data.
+
+Discovering Data:
+```{r}
+head(Global_Confirm)
+head(Global_Death)
+head(Global_Recovered)
+head(US_Confirm)
+head(US_Death)
+```
+
+Maniupulating Data
+```{r}
+d1 <- US_Confirm[,-c(0:6,8:11)]
+head(d1)
+dim(d1)
+
+d2 <- d1 %>% 
+  gather(-Province_State, key="Day",value = "cases") %>% 
+  group_by(Province_State, Day) %>% 
+  select(Province_State,Day,cases) %>% 
+  summarise(cases=sum(cases))
+
+d2 %>% 
+  ggplot(aes(x=Day, y=Province_State, fill=cases)) +
+  geom_raster()
+
+```
+
+Creating States
+```{r}
+d2$cases
+
+d2 <- rename(d2, state = Province_State)
+head(statepop)
+
+
+d3 <- d2 %>% 
+  filter(state == "Minnesota")
+
+
+## Creating Dates
+
+d3$Day <-str_replace_all(d3$Day, c("/"), ".")
+d3
+
+d4 <- d3 %>% 
+  mutate(Day=as.Date(Day, format = "%m.%d.%y"))
+d4
+
+a1<-data.frame("id"=c(1), "date"=c("1.22.20"))
+head(a1)
+a1$date<-format(as.Date(a1$date), "%d.%m.%y")
+
+## Creating Map
+plot_usmap(
+    data = d4, values = "cases", include = c("Minnesota"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "white", high = "red", name = "Population (2015)", label = scales::comma
+  ) + 
+  labs(title = "Western US States", subtitle = "These are the states in the Pacific Timezone.") +
+  theme(legend.position = "right") +
+  transition_time(Day) +
+  labs(title = "Year: {frame_time}")
+
+d4 %>% 
+  ggplot(aes(x=state, y=cases))+
+  geom_bar(stat = "identity") +
+  transition_time(Day)
+
+?transition_time
+
+```
+
+Creating a Barchart that shows the top 10 states infected. Alongside the deaths
+
+```{r}
+## Data Filtering
+
+b_confirm_1 <- US_Confirm[,-c(2:6,8:11)]
+b_death_1 <- US_Death[,-c(2:6,8:11)]
+
+dim(US_Confirm)
+dim(US_Death)
+
+head(b_confirm_1)
+head(b_death_1)
+
+b_confirm_2 <- b_confirm_1 %>%
+  gather(-Province_State,-UID,key="Day",value="infected_cases") %>% 
+  mutate(Day=as.Date(Day, format = "%m/%d/%y")) %>% 
+
+b_death_2 <- b_death_1 %>%
+  gather(-Province_State,-UID,key="Day",value="death_cases") %>% 
+  mutate(Day=as.Date(Day, format = "%m/%d/%y"))
+
+## Joining two tables
+b_joined <- b_death_2 %>% 
+  left_join(b_confirm_2,by=c("UID","Day","Province_State"))
+
+## Getting top 10 infected states
+b_joined %>% 
+  filter(Day == "2020-05-01") %>% 
+  top_n(10)
+
+
+
+
+
+
+
+```
