@@ -142,7 +142,7 @@ head(b_death_1)
 
 b_confirm_2 <- b_confirm_1 %>%
   gather(-Province_State,-UID,key="Day",value="infected_cases") %>% 
-  mutate(Day=as.Date(Day, format = "%m/%d/%y")) %>% 
+  mutate(Day=as.Date(Day, format = "%m/%d/%y")) 
 
 b_death_2 <- b_death_1 %>%
   gather(-Province_State,-UID,key="Day",value="death_cases") %>% 
@@ -160,7 +160,20 @@ b_joined %>%
 
 
 
+# Creating Months
+b_confirm_3 <- b_confirm_2 %>%
+  mutate(Month= as.numeric(strftime(Day,"%m")))
 
+# Manipulating
+b_confirm_4 <- b_confirm_3 %>% 
+  group_by(Month, Province_State) %>% 
+  summarise(infected = mean(infected_cases))
 
+# Creatomg Barcharts
+b_confirm_4 %>% 
+  ggplot(aes(x=Month, y=infected, fill = as.factor(Month))) +
+  geom_bar(stat="identity")
 
 ```
+
+
